@@ -64,7 +64,7 @@ class Qwen3Attention(nn.Module):
             self.scaling,
             self.num_kv_heads,
         )
-        if not self.qkv_bias:
+        if not self.qkv_bias: # Qwen2: qkv_bias=True → has bias on QKV projections, no Q/K norm; Qwen3: qkv_bias=False → no bias on QKV projections, but adds RMSNorm on Q and K (before RoPE)
             self.q_norm = RMSNorm(self.head_dim, eps=rms_norm_eps)
             self.k_norm = RMSNorm(self.head_dim, eps=rms_norm_eps)
 
@@ -79,7 +79,7 @@ class Qwen3Attention(nn.Module):
         k = k.view(-1, self.num_kv_heads, self.head_dim)
         v = v.view(-1, self.num_kv_heads, self.head_dim)
         if not self.qkv_bias:
-            q = self.q_norm(q)
+            q = self.q_norm(q) # no residual
             k = self.k_norm(k)
         q, k = self.rotary_emb(positions, q, k)
         o = self.attn(q, k, v)

@@ -32,7 +32,7 @@ class Scheduler:
                 break
             num_seqs += 1
             self.block_manager.allocate(seq)
-            num_batched_tokens += len(seq) - seq.num_cached_tokens
+            num_batched_tokens += len(seq) - seq.num_cached_tokens # TODO: understand cached tokens, batched tokens and block manager
             seq.status = SequenceStatus.RUNNING
             self.waiting.popleft()
             self.running.append(seq)
@@ -43,12 +43,16 @@ class Scheduler:
         # decode
         while self.running and num_seqs < self.max_num_seqs:
             seq = self.running.popleft()
-            while not self.block_manager.can_append(seq):
+            while not self.block_manager.can_append(seq): # if this sequence generates one more token, do we have KV-block capacity?
+                # no capacity
+                # Preempt a sequence from the tail of the running queue to free KV blocks.
+                # note, when a seq is preempted, it's not dropped, but put back to the head of the waiting queue, so it will be scheduled as soon as possible.
                 if self.running:
                     self.preempt(self.running.pop())
                 else:
                     self.preempt(seq)
                     break
+            # have capacity, schedule this sequence to run one step
             else:
                 num_seqs += 1
                 self.block_manager.may_append(seq)
@@ -65,7 +69,7 @@ class Scheduler:
     def postprocess(self, seqs: list[Sequence], token_ids: list[int]) -> list[bool]:
         for seq, token_id in zip(seqs, token_ids):
             seq.append_token(token_id)
-            if (not seq.ignore_eos and token_id == self.eos) or seq.num_completion_tokens == seq.max_tokens:
+            if (not seq.ignore_eos and token_id == self.eos) or seq.num_completion_tokens == seq.max_tokens: # hit EOS or max tokens
                 seq.status = SequenceStatus.FINISHED
                 self.block_manager.deallocate(seq)
                 self.running.remove(seq)
