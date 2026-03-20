@@ -86,7 +86,7 @@ class ColumnParallelLinear(LinearBase):
 Used when multiple weight matrices are fused into one (e.g. gate + up projections in MLP).
 Each sub-projection gets its own slice of the parameter
 原本的做法： GPU 要先算一次 Gate，再算一次 Up。这需要启动两个 CUDA Kernel，搬运两次数据
-合并的做法： 既然 Gate 和 Up 的输入都是一样的 ($x$)，且形状也相同，我们干脆把它们的权重矩阵“上下拼接”成一个大矩阵
+合并的做法： 既然 Gate 和 Up 的输入都是一样的 (x)，且形状也相同，我们干脆把它们的权重矩阵“上下拼接”成一个大矩阵
 性能提升： GPU 只需要做一次矩阵乘法（GEMM），就能同时拿到 Gate 和 Up 的结果。然后代码里再用 chunk(2) 把结果切开分别处理
 '''
 class MergedColumnParallelLinear(ColumnParallelLinear):

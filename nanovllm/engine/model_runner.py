@@ -141,7 +141,7 @@ class ModelRunner:
             + current                        = add back what empty_cache() freed (peak includes temps)
             Divide by block_bytes → number of blocks that fit.
         '''
-        config.num_kvcache_blocks = int(total * config.gpu_memory_utilization - used - peak + current) // block_bytes
+        config.num_kvcache_blocks = int(total * config.gpu_memory_utilization - used - peak + current) // block_bytes # write to config, will be consumed by BlockManager and Scheduler to manage KV cache allocation
         assert config.num_kvcache_blocks > 0
 
         '''
